@@ -1,0 +1,21 @@
+[
+  {
+    "version": "1.1",
+    "date": "2026-11-09",
+    "title": "Install as an app",
+    "notes": [
+      "Willowmere After Hours can be installed as an app from the menu (INSTALL AS APP), with its own icon. It opens fullscreen and works offline once it has loaded."
+    ]
+  },
+  {
+    "version": "1.0",
+    "date": "2026-11-07",
+    "title": "Release",
+    "notes": [
+      "Night-shift horror at Willowmere animal hospital: five nights, plus a Custom Night.",
+      "Keep Biscuit, Mittens, Hoppy and Pepper calm on the cameras: feed them, play them music, or dose them at the medication station.",
+      "Let a patient's stress reach 100 and it turns, and comes for you.",
+      "From night 4, the Stray only moves when nobody is watching it."
+    ]
+  }
+]
