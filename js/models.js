@@ -126,6 +126,24 @@ function calmParrot() {
   return g;
 }
 
+function calmFerret() {
+  const g = new THREE.Group();
+  const fur = std(0xd8c8a8), mask = std(0x4a3a2a);
+  const b = mesh(new THREE.CapsuleGeometry(0.08, 0.36, 4, 12), fur, 0, 0.1, 0, g);
+  b.rotation.x = Math.PI / 2;
+  const head = new THREE.Group(); head.position.set(0, 0.13, 0.27); g.add(head);
+  sph(0.075, fur, 0, 0, 0, head, 1, 0.9, 1.2);
+  sph(0.05, mask, 0, 0.012, 0.045, head, 1.3, 0.55, 1);
+  sph(0.014, BLACK, 0, -0.01, 0.1, head);
+  eye(head, 0x111111, -0.03, 0.022, 0.07, 0.012); eye(head, 0x111111, 0.03, 0.022, 0.07, 0.012);
+  sph(0.025, fur, -0.05, 0.05, -0.01, head); sph(0.025, fur, 0.05, 0.05, -0.01, head);
+  limb(g, mask, [0, 0.09, -0.24], [0.06, 0.04, -0.42], 0.025); // tail
+  for (const [x, z] of [[-0.06, 0.15], [0.06, 0.15], [-0.06, -0.15], [0.06, -0.15]]) limb(g, mask, [x, 0.07, z], [x, 0.01, z + 0.02], 0.022);
+  bandageRing(g, 0.085, 0, 0.1, 0.02, Math.PI / 2);
+  g.userData.breathe = b;
+  return g;
+}
+
 // ---------------------------------------------------------------- monsters
 function hunchedBody(g, fur, skin, h = 1) {
   // digitigrade legs
@@ -295,5 +313,30 @@ function monsterStray() {
   return g;
 }
 
-export const buildCalm = { biscuit: calmDog, mittens: calmCat, hoppy: calmRabbit, pepper: calmParrot };
-export const buildMonster = { biscuit: monsterDog, mittens: monsterCat, hoppy: monsterRabbit, pepper: monsterParrot, stray: monsterStray };
+function monsterFerret() {
+  // long, low and wrong: a body that keeps going, too many teeth, the bandage from its surgery trailing
+  const g = new THREE.Group();
+  const fur = std(0x9a8a6a), skin = std(0x8a5a50), mask = std(0x2a1e16);
+  const segs = [];
+  for (let i = 0; i < 5; i++) segs.push(sph(0.2 - i * 0.012, i % 2 ? skin : fur, 0, 0.62 - i * 0.06, -0.1 - i * 0.32, g, 1, 0.85, 1.4));
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
+    const z = 0.05 - i * 0.38;
+    limb(g, fur, [s * 0.14, 0.55 - i * 0.05, z], [s * 0.34, 0.3 - i * 0.03, z + 0.08], 0.045);
+    limb(g, skin, [s * 0.34, 0.3 - i * 0.03, z + 0.08], [s * 0.3, 0.03, z + 0.18], 0.035);
+    claws(g, [s * 0.3, 0.06, z + 0.2], -1);
+  }
+  const head = new THREE.Group(); head.position.set(0, 0.85, 0.3); g.add(head);
+  sph(0.2, fur, 0, 0, 0, head, 1, 0.85, 1.3);
+  sph(0.15, mask, 0, 0.05, 0.12, head, 1.3, 0.5, 1);
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.08, 0.1); head.add(jaw);
+  box(0.24, 0.05, 0.22, MOUTH, 0, 0.0, 0.12, jaw);
+  teeth(head, 9, 0.22, -0.06, 0.3, 0.07, true);
+  teeth(jaw, 9, 0.2, 0.02, 0.22, 0.06, false);
+  const eyes = [eye(head, 0xff3020, -0.08, 0.08, 0.24, 0.022), eye(head, 0xff3020, 0.08, 0.08, 0.24, 0.022)];
+  bandageRing(g, 0.19, 0, 0.6, -0.4, Math.PI / 2);
+  g.userData = { head, eyes, torso: segs[0], kind: 'ferret' };
+  return g;
+}
+
+export const buildCalm = { biscuit: calmDog, mittens: calmCat, hoppy: calmRabbit, pepper: calmParrot, ziggy: calmFerret };
+export const buildMonster = { biscuit: monsterDog, mittens: monsterCat, hoppy: monsterRabbit, pepper: monsterParrot, ziggy: monsterFerret, stray: monsterStray };

@@ -397,6 +397,11 @@ export function buildCams() {
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshStandardMaterial({ color: 0x0a1018, roughness: 0.05, metalness: 0.9 })); glass.position.set(4.98, 1.2, 1.0); glass.rotation.y = -Math.PI / 2; s.add(glass);
     const hours = signMesh(['CLOSED', '#Open 8am - 6pm', '#Emergencies: knock'], 0.6, 0.4, { bg: '#eee', fg: '#a00', size: 60 }); hours.position.set(4.96, 1.4, 1.0); hours.rotation.y = -Math.PI / 2; s.add(hours);
     const lostPet = signMesh(['LOST DOG', '#brown · thin · no collar', '#"he doesn\'t look right"'], 0.6, 0.5, { bg: '#f2eedc', size: 70 }); lostPet.position.set(0.3, 1.6, -3.98); s.add(lostPet);
+    // Ziggy's pen (Overtime): a low wire fence by the fish tank
+    const penMat = std(0x8a8a80);
+    for (const [px, pz, w, d] of [[1.4, -2.1, 1.6, 0.04], [1.4, -0.9, 1.6, 0.04], [0.6, -1.5, 0.04, 1.2], [2.2, -1.5, 0.04, 1.2]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, d), new THREE.MeshStandardMaterial({ color: 0x9a9a90, wireframe: true })); f.position.set(px, 0.25, pz); s.add(f); }
+    const penFloor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.03, 1.2), penMat); penFloor.position.set(1.4, 0.015, -1.5); s.add(penFloor);
+    calm.ziggy = buildCalm.ziggy(); calm.ziggy.position.set(1.3, 0.03, -1.45); calm.ziggy.rotation.y = -0.9; calm.ziggy.scale.setScalar(1.5); s.add(calm.ziggy);
     sets['4'] = { scene: s, camera: makeCam(s, [-4.4, 2.9, 3.6], [1.0, 0.8, -1.5], 66), spots: { biscuit: { p: [0.4, 0, -0.6] }, stray: { p: [1.6, 0, 0.6] }, pepper: perch(s, -2.6, 1.1, -2.4) } };
   }
   // ---- 5A / 5B halls (camera at the office end looking back down the corridor)

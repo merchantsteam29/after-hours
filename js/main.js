@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { buildOffice, buildCams, CAM_LIST, CAM_NAMES } from './world.js';
 import { buildMonster } from './models.js';
 import { initAudio, sfx, loop, allLoopsOff, setVolume } from './audio.js';
-import { CREATURES, PATIENTS, ALL, NIGHT_LEVELS, VIALS, CALLS, FAKE_LINES, ENDING } from './data.js';
+import {CREATURES, PATIENTS, ALL, NIGHT_LEVELS, VIALS, CALLS, FAKE_LINES, ENDING, OVERTIME, CHALLENGES, OT_ENDING } from './data.js';
 import { createGovernor } from './perf.js';
 
 const $ = (id) => document.getElementById(id);
@@ -13,8 +13,12 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ------------------------------------------------------------------ save
 const SAVE_KEY = 'willowmere_after_hours_v1';
-let save = { night: 1, beat: false, stars: 0, volume: 0.8, shake: 1, autoRes: true, pads: true, custom: { biscuit: 10, mittens: 10, hoppy: 10, pepper: 10, stray: 10 } };
+let save = { night: 1, beat: false, stars: 0, volume: 0.8, shake: 1, autoRes: true, pads: true, custom: { biscuit: 10, mittens: 10, hoppy: 10, pepper: 10, ziggy: 0, stray: 10 },
+  overtime: false, nightStars: {}, challenges: {}, files: {} };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch { /* fresh save */ }
+save.custom = { biscuit: 10, mittens: 10, hoppy: 10, pepper: 10, ziggy: 0, stray: 10, ...save.custom };
+save.nightStars ||= {}; save.challenges ||= {}; save.files ||= {};
+const nightName = (n) => n === 6 ? 'CUSTOM NIGHT' : n === OVERTIME ? 'NIGHT 6 · OVERTIME' : 'NIGHT ' + n;
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage blocked */ } };
 setVolume(save.volume);
 
@@ -124,9 +128,12 @@ function startNight(night, levels) {
     phone: { state: 'idle', call: null, ringT: 0, line: 0, lineT: 0, spoken: false, est: 3 },
     calls: (CALLS[night] || []).map((c) => ({ ...c, done: false })), fakeQueued: false,
     flicker: 0, flickerT: rand(5, 15), toasts: {}, jump: null, killer: null, levels: lv,
-    lastHour: 0, seen2B: 0,
+    lastHour: 0, seen2B: 0, turned: 0, wrongDoses: 0,
+    surgeT: night === OVERTIME ? HOUR * rand(1.6, 3.6) : 0,
   };
   for (const id of ALL) G.cr[id] = newCreature(id, lv[id] || 0);
+  for (const id of ALL) if (G.cr[id].level > 0) { const f = (save.files[id] ||= {}); f.met = true; }
+  persist();
   for (const id of PATIENTS) G.recipes[id] = [pick('ABG'), pick('ABG'), pick('ABG')].sort();
   G.med.tab = PATIENTS.find((id) => G.cr[id].level > 0) || 'biscuit';
   yaw = 0;
@@ -137,7 +144,7 @@ function startNight(night, levels) {
 
 function showIntro() {
   mode = 'intro';
-  $('intro').innerHTML = `<div class="introTime">12:00 AM</div><div class="introNight">${G.night === 6 ? 'CUSTOM NIGHT' : 'NIGHT ' + G.night}</div>`;
+  $('intro').innerHTML = `<div class="introTime">12:00 AM</div><div class="introNight">${nightName(G.night)}</div>`;
   $('intro').classList.remove('hidden');
   setTimeout(() => { if (mode === 'intro') { $('intro').classList.add('hidden'); mode = 'play'; } }, TEST ? 200 : 3200);
 }
@@ -168,7 +175,9 @@ function turn(c) {
   c.stress = 100;
   const pan = doorPan[c.def.room] ?? 0;
   sfx.clang(pan); sfx.growl(c.def.kind, pan); sfx.sting();
+  G.turned++;
   if (c.id === 'hoppy') { c.state = 'hoppy'; c.stage = 0; c.moveT = 0; c.loc = '2B'; }
+  else if (c.id === 'ziggy') { c.state = 'walls'; c.loc = 'WALL'; c.tries = 0; c.dart = null; c.dartT = rand(5, 9); c.scurT = 2; }
   else if (c.id === 'pepper') { c.state = 'perch'; c.turnedT = 0; c.perchT = 0; c.stareT = 0; c.fakeT = 4; c.loc = pick(perchCams()); }
   else { c.state = 'hunt'; c.pathIdx = 0; c.loc = c.path[0]; c.moveT = 0; }
   if (viewing(c.def.room)) G.camStatic = 1.2;
@@ -178,6 +187,7 @@ function perchCams() { return ['1A', '1B', '2A', '2B', '3', '4', '5A', '5B'].fil
 
 function retreat(c) {
   if (c.id === 'stray') { c.loc = '3'; c.pathIdx = 0; c.path = pick(c.def.paths); c.moveT = 0; return; }
+  c.dart = null;
   c.state = 'patient'; c.loc = c.def.room; c.stress = 45; c.pathIdx = 0; c.stage = 0;
 }
 
@@ -197,6 +207,7 @@ function updateCreature(c, dt) {
   if (c.state === 'patient') {
     c.feedCD = Math.max(0, c.feedCD - dt); c.sootheCD = Math.max(0, c.sootheCD - dt);
     let rate = 0.15 + c.level * 0.04;
+    if (c.id === 'ziggy') rate *= 1.35; // bored easily
     if (c.id === 'pepper' && viewing('2A')) rate = -2.2;
     c.stress = clamp(c.stress + rate * dt, 0, 100);
     if (c.stress >= 100) turn(c);
@@ -246,6 +257,32 @@ function updateCreature(c, dt) {
     return;
   }
 
+  if (c.state === 'walls') {
+    // Ziggy: in the walls. Chitters on one side, then comes out there. Shut that door in time.
+    const pans = { L: -1, R: 1, V: 0.3 }, locs = { L: 'LD', R: 'RD', V: 'VENT' };
+    if (c.dart) {
+      c.dart.t -= dt;
+      if (c.dart.t <= 0.55) c.loc = locs[c.dart.door]; // out at the door: the hall light shows it
+      if (c.dart.t <= 0) {
+        const door = c.dart.door; c.dart = null;
+        if (G.doors[door] && !G.powerOut) {
+          sfx.bang(pans[door]); c.tries++; c.loc = 'WALL';
+          if (c.tries >= 3) { retreat(c); onceToast('zigBack', 'Ziggy gave up and went back to his pen', 'good'); }
+          else c.dartT = Math.max(3, rand(6, 11) - c.level * 0.2);
+        } else kill(c);
+      }
+      return;
+    }
+    c.scurT -= dt; if (c.scurT <= 0) { c.scurT = rand(2, 5); sfx.scurry((Math.random() - 0.5) * 1.6, 0.18); } // somewhere in the walls
+    c.dartT -= dt;
+    if (c.dartT <= 0) {
+      const door = pick(['L', 'R', 'V']);
+      c.dart = { door, t: Math.max(1.5, 2.6 - c.level * 0.05) };
+      sfx.chitter(pans[door], 1);
+      onceToast('zigTip', 'A chitter... from which side?', 'warn');
+    }
+    return;
+  }
   if (c.state === 'perch') {
     c.turnedT += dt; c.perchT += dt; c.fakeT -= dt;
     if (c.fakeT <= 0) { G.fakeQueued = true; c.fakeT = rand(16, 24); }
@@ -328,8 +365,8 @@ function dose() {
   if (G.syringe.patient !== c.id) { toast(`That syringe is labelled for ${CREATURES[G.syringe.patient].name}`); return; }
   const ok = G.syringe.fill.slice().sort().join('') === G.recipes[c.id].join('');
   G.syringe = null; sfx.dose();
-  if (ok) { c.stress = clamp(c.stress - 55, 0, 100); sfx.good(); toast(`${c.def.name} received the correct dose`, 'good'); }
-  else { c.stress = clamp(c.stress + 20, 0, 100); sfx.wrong(); toast(`Wrong dose! ${c.def.name} is agitated`, 'warn'); }
+  if (ok) { c.stress = clamp(c.stress - 55, 0, 100); sfx.good(); toast(`${c.def.name} received the correct dose`, 'good'); const f = (save.files[c.id] ||= {}); f.doses = (f.doses || 0) + 1; }
+  else { G.wrongDoses++; c.stress = clamp(c.stress + 20, 0, 100); sfx.wrong(); toast(`Wrong dose! ${c.def.name} is agitated`, 'warn'); }
   updateCamUI(true);
 }
 
@@ -398,6 +435,7 @@ let shake = 0;
 function kill(c) {
   if (mode !== 'play') return;
   mode = 'dying'; G.killer = c.id;
+  { const f = (save.files[c.id] ||= {}); f.met = true; f.kills = (f.kills || 0) + 1; persist(); }
   lowerCams(); closeMeds(); hangUp(); allLoopsOff();
   const m = monsters[c.id];
   office.scene.add(m); m.visible = true; m.scale.setScalar(1);
@@ -411,7 +449,7 @@ function updateJump(dt) {
   const cam = office.camera;
   const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
   const k = Math.min(1, J.t / 0.2); const e = 1 - Math.pow(1 - k, 3);
-  const near = { dog: 0.95, cat: 0.62, rabbit: 0.62, parrot: 0.7, stray: 0.78 }[J.m.userData.kind] || 0.75;
+  const near = { dog: 0.95, cat: 0.62, rabbit: 0.62, parrot: 0.7, ferret: 0.66, stray: 0.78 }[J.m.userData.kind] || 0.75;
   const dist = 2.2 - e * (2.2 - near);
   const m = J.m;
   m.position.set(0, 0, 0); m.rotation.set(0, yaw, 0);
@@ -433,7 +471,7 @@ function showGameOver() {
   mode = 'over';
   const c = CREATURES[G.killer];
   $('over').innerHTML = `<div class="static"></div><div class="overBox"><h1>YOU DIDN'T MAKE IT</h1><p class="overLine">${c.death}</p>
-    <p class="overSub">${G.night === 6 ? 'Custom Night' : 'Night ' + G.night} · ${hourLabel()}</p>
+    <p class="overSub">${nightName(G.night)} · ${hourLabel()}</p>
     <div class="btnRow"><button data-act="retry">TRY AGAIN</button><button data-act="menu">MAIN MENU</button></div></div>`;
   $('over').classList.remove('hidden');
 }
@@ -444,7 +482,20 @@ function win() {
   sfx.chime();
   $('hud').classList.add('hidden');
   let extra = '';
-  if (G.night < 5) { save.night = Math.max(save.night, G.night + 1); }
+  // stars: 1 survived, 2 with a quarter of the power left, 3 that and nobody turned
+  const st = 1 + (G.power >= 25 ? 1 : 0) + (G.power >= 25 && G.turned === 0 ? 1 : 0);
+  if (G.night !== 6) {
+    const before = save.nightStars[G.night] || 0;
+    save.nightStars[G.night] = Math.max(before, st);
+    extra += `<p class="overSub nightStars">${'★'.repeat(st)}<span>${'★'.repeat(3 - st)}</span>${st > before ? ' · new best' : ''}</p>`;
+    if (st < 3) extra += `<p class="overSub">${st === 1 ? 'Finish with 25% power for ★★' : 'Finish with 25% power and nobody turning for ★★★'}</p>`;
+  }
+  if (G.night === 6) {
+    const ch = CHALLENGES.find((c) => ALL.every((id) => (G.levels[id] || 0) === (c.lv[id] || 0)));
+    if (ch && !save.challenges[ch.id]) { save.challenges[ch.id] = true; extra += `<p class="overSub">Challenge beaten: ${ch.name}</p>`; }
+  }
+  if (G.night === OVERTIME) { save.overtime = true; }
+  else if (G.night < 5) { save.night = Math.max(save.night, G.night + 1); }
   else if (G.night === 5) { save.beat = true; save.night = 5; }
   else if (G.night === 6) {
     const lv = G.levels; const all20 = ALL.every((id) => lv[id] >= 20);
@@ -453,8 +504,15 @@ function win() {
   }
   persist();
   $('win').innerHTML = `<div class="winClock"><span class="roll"><span>5</span><span>6</span></span>:00 AM</div>${extra}
-    <div class="btnRow delayed"><button data-act="${G.night === 5 ? 'ending' : G.night === 6 ? 'menu' : 'next'}">${G.night === 5 ? 'CONTINUE' : G.night === 6 ? 'MAIN MENU' : 'NEXT NIGHT'}</button>${G.night < 5 ? '<button data-act="menu">MAIN MENU</button>' : ''}</div>`;
+    <div class="btnRow delayed"><button data-act="${G.night === 5 ? 'ending' : G.night === OVERTIME ? 'otEnding' : G.night === 6 ? 'menu' : 'next'}">${G.night === 5 || G.night === OVERTIME ? 'CONTINUE' : G.night === 6 ? 'MAIN MENU' : 'NEXT NIGHT'}</button>${G.night < 5 ? '<button data-act="menu">MAIN MENU</button>' : ''}</div>`;
   $('win').classList.remove('hidden');
+}
+function showOtEnding() {
+  mode = 'ending'; hideAll();
+  $('ending').innerHTML = `<div class="endText">${OT_ENDING.map((l, i) => `<p style="animation-delay:${i * 2.2}s">${l}</p>`).join('')}
+    <p class="endPay" style="animation-delay:${OT_ENDING.length * 2.2}s">OVERTIME PAY: $422.80<br><span>ZIGGY ADDED TO CUSTOM NIGHT</span></p></div>
+    <div class="btnRow delayedLong"><button data-act="menu">MAIN MENU</button></div>`;
+  $('ending').classList.remove('hidden');
 }
 function showEnding() {
   mode = 'ending'; hideAll();
@@ -473,6 +531,7 @@ function updatePlay(dt) {
     if (G.hour === 2 || G.hour === 4) for (const id of ALL) { const c = G.cr[id]; if (c.level > 0 && G.night !== 6) c.level += 1; }
   }
   if (G.t >= HOUR * 6) { win(); return; }
+  if (G.surgeT && G.t >= G.surgeT && !G.powerOut) { G.surgeT = 0; surge(); }
 
   // power
   if (!G.powerOut) {
@@ -519,6 +578,15 @@ function usage() {
   return 1 + (G.doors.L ? 1 : 0) + (G.doors.R ? 1 : 0) + (G.doors.V ? 1 : 0) + (G.lights.L ? 0.7 : 0) + (G.lights.R ? 0.7 : 0) + (G.camsUp ? 0.5 : 0);
 }
 
+function surge() {
+  // every door pops open, the lights cut out, and the cameras reboot
+  lowerCams();
+  G.doors.L = G.doors.R = G.doors.V = false; G.lights.L = G.lights.R = false;
+  G.camLost = 5; G.power = Math.max(1, G.power - 4); G.flicker = 1.2;
+  sfx.surge(); sfx.door(-0.9); sfx.door(0.9); sfx.door(0.3);
+  shake = Math.max(shake, 0.4);
+  toast('POWER SURGE: the doors reset!', 'warn');
+}
 function powerOut() {
   G.power = 0; G.powerOut = true;
   lowerCams(); closeMeds();
@@ -742,7 +810,7 @@ function loadSyringe() {
 }
 
 // ------------------------------------------------------------------ screens
-function hideAll() { for (const id of ['menu', 'intro', 'over', 'win', 'ending', 'custom', 'howto', 'settings', 'pause', 'camUI', 'medUI']) $(id).classList.add('hidden'); }
+function hideAll() { for (const id of ['menu', 'intro', 'over', 'win', 'ending', 'custom', 'howto', 'settings', 'pause', 'camUI', 'medUI', 'nights', 'files']) $(id).classList.add('hidden'); }
 function showMenu() {
   mode = 'menu'; paused = false;
   if (G) { hangUp(); }
@@ -753,11 +821,34 @@ function showMenu() {
   $('contBtn').classList.toggle('hidden', save.night <= 1 && !save.beat);
   $('customBtn').disabled = !save.beat;
   $('customBtn').textContent = save.beat ? 'CUSTOM NIGHT' : 'CUSTOM NIGHT 🔒';
-  $('stars').textContent = '★'.repeat((save.beat ? 1 : 0) + Math.max(0, save.stars - 1));
+  $('stars').textContent = '★'.repeat((save.beat ? 1 : 0) + Math.max(0, save.stars - 1) + (save.overtime ? 1 : 0));
+  $('otBtn').classList.toggle('hidden', !save.beat);
+  $('otBtn').textContent = save.overtime ? 'NIGHT 6 · OVERTIME ✓' : 'NIGHT 6 · OVERTIME';
+  $('nightsBtn').classList.toggle('hidden', save.night <= 1 && !save.beat);
   $('menu').classList.remove('hidden');
+}
+function showNights() {
+  hideAll();
+  const top = save.beat ? 5 : save.night;
+  const list = [1, 2, 3, 4, 5].filter((n) => n <= top).concat(save.beat ? [OVERTIME] : []);
+  $('nightList').innerHTML = list.map((n) => { const s = save.nightStars[n] || 0;
+    return `<button class="nRow" data-night="${n}"><span>${nightName(n)}</span><b>${'★'.repeat(s)}<i>${'★'.repeat(3 - s)}</i></b></button>`; }).join('');
+  $('nights').classList.remove('hidden');
+}
+function showFiles() {
+  hideAll();
+  $('fileList').innerHTML = ALL.map((id) => {
+    const d = CREATURES[id], f = save.files[id] || {};
+    if (!f.met) return `<div class="file locked"><h4>FILE LOCKED</h4><p>Not admitted yet.</p></div>`;
+    const name = d.name === '???' ? 'The Stray' : d.name;
+    return `<div class="file"><h4>${name} <small>${d.species}</small></h4><p>${d.chart || 'No chart. Animal control dropped it off and left.'}</p>${d.likes ? `<p class="likes">${d.likes}</p>` : ''}
+      <p class="fstat">Got you: <b>${f.kills || 0}</b>${PATIENTS.includes(id) ? ` · Correct doses: <b>${f.doses || 0}</b>` : ''}</p></div>`;
+  }).join('');
+  $('files').classList.remove('hidden');
 }
 function showCustom() {
   hideAll();
+  $('chList').innerHTML = CHALLENGES.map((c) => `<button class="chBtn" data-ch="${c.id}" title="${c.note}">${save.challenges[c.id] ? '✓ ' : ''}${c.name}</button>`).join('');
   $('customList').innerHTML = ALL.map((id) => `<div class="cRow"><div class="cName">${CREATURES[id].name === '???' ? 'The Stray' : CREATURES[id].name}</div>
     <button data-cadj="${id}" data-d="-1">−</button><b id="cv_${id}">${save.custom[id]}</b><button data-cadj="${id}" data-d="1">+</button></div>`).join('');
   $('custom').classList.remove('hidden');
@@ -785,6 +876,12 @@ document.addEventListener('click', (e) => {
   else if (act === 'retry') startNight(G.night, G.night === 6 ? G.levels : null);
   else if (act === 'next') startNight(Math.min(5, G.night + 1));
   else if (act === 'ending') showEnding();
+  else if (act === 'otEnding') showOtEnding();
+  else if (act === 'overtime') startNight(OVERTIME);
+  else if (act === 'nights') showNights();
+  else if (act === 'files') showFiles();
+  else if (t.dataset.night) startNight(Number(t.dataset.night));
+  else if (t.dataset.ch) { const c = CHALLENGES.find((x) => x.id === t.dataset.ch); for (const id of ALL) { save.custom[id] = c.lv[id] || 0; const el = $('cv_' + id); if (el) el.textContent = save.custom[id]; } persist(); toast(c.note); }
   else if (act === 'resume') pause(false);
   else if (act === 'quit') showMenu();
   else if (act === 'reset') { if (confirm('Erase all progress?')) { save.night = 1; save.beat = false; save.stars = 0; persist(); showMenu(); } }

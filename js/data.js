@@ -23,14 +23,20 @@ export const CREATURES = {
     chart: 'Feather plucking. Mimics voices.', likes: 'Calms down while you watch her cage camera.',
     death: 'Pepper screamed.',
   },
+  ziggy: {
+    name: 'Ziggy', species: 'Ferret · 2 yrs', room: '4', kind: 'ferret',
+    chart: 'Swallowed a sock (removed). Escape artist. Gets into everything.', likes: 'Bored easily: stress climbs fast. Food and music both work.',
+    death: 'Ziggy was in the walls the whole time.',
+  },
   stray: {
     name: '???', species: 'Unknown', room: '3', kind: 'stray', notPatient: true,
     paths: [['3', '4', '5A', 'LD'], ['3', '4', '5B', 'RD']],
     death: 'Nobody was watching.',
   },
 };
-export const PATIENTS = ['biscuit', 'mittens', 'hoppy', 'pepper'];
-export const ALL = ['biscuit', 'mittens', 'hoppy', 'pepper', 'stray'];
+export const PATIENTS = ['biscuit', 'mittens', 'hoppy', 'pepper', 'ziggy'];
+export const ALL = ['biscuit', 'mittens', 'hoppy', 'pepper', 'ziggy', 'stray'];
+export const OVERTIME = 7; // night number used for Overtime ("Night 6"); 6 is Custom Night
 
 export const NIGHT_LEVELS = {
   1: { biscuit: 3, mittens: 2, hoppy: 0, pepper: 0, stray: 0 },
@@ -38,7 +44,15 @@ export const NIGHT_LEVELS = {
   3: { biscuit: 6, mittens: 6, hoppy: 5, pepper: 4, stray: 0 },
   4: { biscuit: 8, mittens: 7, hoppy: 7, pepper: 6, stray: 5 },
   5: { biscuit: 11, mittens: 10, hoppy: 10, pepper: 9, stray: 9 },
+  7: { biscuit: 8, mittens: 8, hoppy: 7, pepper: 7, ziggy: 9, stray: 8 },
 };
+// Custom Night challenges: named line-ups, ticked off when beaten
+export const CHALLENGES = [
+  { id: 'pack', name: 'PACK ANIMALS', note: 'Biscuit and the Stray, flat out', lv: { biscuit: 20, stray: 20 } },
+  { id: 'birdcage', name: 'BIRDWATCHING', note: 'Pepper at full volume, Mittens in the vents', lv: { pepper: 20, mittens: 15 } },
+  { id: 'runners', name: 'RUNNERS', note: 'Hoppy and Ziggy: you will hear them before you see them', lv: { hoppy: 20, ziggy: 18 } },
+  { id: 'skeleton', name: 'SKELETON CREW', note: 'Everyone, a little', lv: { biscuit: 6, mittens: 6, hoppy: 6, pepper: 6, ziggy: 6, stray: 6 } },
+];
 
 export const VIALS = { A: { name: 'AMBER', color: '#d6902a' }, B: { name: 'BLUE', color: '#2a6fd6' }, G: { name: 'GREEN', color: '#3fae4a' } };
 
@@ -112,6 +126,21 @@ export const CALLS = {
     ] },
   ],
   6: [],
+  7: [
+    { at: 2, from: 'Dr. Reyes (New Day Vet)', pitch: 1.1, rate: 1.0, lines: [
+      'Hi. You don\'t know me. I\'m Doctor Reyes, I took over from Doctor Hale.',
+      'Nobody else would take the night. I\'m sorry. It\'s one more night, and it pays double.',
+      'We have a new one. Ziggy. A ferret. He\'s in a pen in the lobby, camera 4.',
+      'Ferrets get into everything. If he gets out, he won\'t use the halls. He\'ll be in the walls.',
+      'You won\'t see him coming. Listen. He chitters right before he comes out. Left, right, or the vent. Shut that one. Fast.',
+      'Oh, and the generator has been surging. If it does, every door pops open. Close them again.',
+    ] },
+    { at: 150, from: 'Jules (Ziggy)', pitch: 1.3, rate: 1.15, lines: [
+      'Hiii! Is this the place with Ziggy? He is SUCH a menace. I love him so much.',
+      'He gets bored, like, instantly. Give him snacks. Play him music. He dances!',
+      'If he goes quiet, that is when you worry. Okay bye!',
+    ] },
+  ],
 };
 
 export const FAKE_LINES = [
@@ -122,6 +151,12 @@ export const FAKE_LINES = [
   ['Talk tomorrow! Talk tomorrow! Talk tomorrow!'],
 ];
 
+export const OT_ENDING = [
+  '6:00 AM. Doctor Reyes lets herself in with a box of donuts and stops in the doorway.',
+  'Ziggy is asleep in a sock in his pen. Everyone is in their kennel. Everyone is breathing normally.',
+  'She looks at the scratches inside the vent cover for a long time.',
+  '"Same time tomorrow?"',
+];
 export const ENDING = [
   '6:00 AM. The day staff unlock the front doors.',
   'Biscuit is asleep in his kennel, tail thumping. Mittens is purring, the normal way. Hoppy is eating. Pepper says "good morning."',

@@ -82,7 +82,10 @@
   <div class="menuBtns">
     <button data-act="new">NEW GAME</button>
     <button data-act="continue" id="contBtn">CONTINUE</button>
+    <button data-act="overtime" id="otBtn" class="hidden">NIGHT 6 · OVERTIME</button>
     <button data-act="custom" id="customBtn">CUSTOM NIGHT</button>
+    <button data-act="nights" id="nightsBtn">NIGHTS</button>
+    <button data-act="files">PATIENT FILES</button>
     <button data-act="howto">HOW TO PLAY</button>
     <button data-act="settings">SETTINGS</button>
     <button id="syncBtn">☁ SYNC</button>
@@ -142,7 +145,26 @@
     <p class="note">0 = not admitted · 20 = nightmare</p>
     <div id="customList"></div>
     <div class="btnRow small"><button data-preset="0">ALL 0</button><button data-preset="10">ALL 10</button><button data-preset="20">ALL 20</button></div>
+    <p class="note">Challenges</p>
+    <div class="btnRow small" id="chList"></div>
     <div class="btnRow"><button data-act="menu">BACK</button><button data-act="startCustom">START</button></div>
+  </div>
+</div>
+
+<div id="nights" class="screen hidden">
+  <div class="box">
+    <h2>NIGHTS</h2>
+    <p class="note">★ survive · ★★ with 25% power left · ★★★ and nobody turns</p>
+    <div id="nightList"></div>
+    <div class="btnRow"><button data-act="menu">BACK</button></div>
+  </div>
+</div>
+
+<div id="files" class="screen hidden">
+  <div class="box wide">
+    <h2>PATIENT FILES</h2>
+    <div id="fileList"></div>
+    <div class="btnRow"><button data-act="menu">BACK</button></div>
   </div>
 </div>
 

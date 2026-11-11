@@ -222,3 +222,18 @@ body.is-touch #medBar { right: 12px; bottom: 8px; padding: 10px 12px; letter-spa
 body.is-pad button:focus { outline: 2px solid #afa; outline-offset: 2px; }
 body.is-touch #hud.cams .tOnly { display: none; }
 body.is-touch #hud.cams #phoneBox { top: auto; bottom: 8px; right: 12px; font-size: 16px; padding: 6px 10px; }
+
+/* night select, patient files, challenges */
+.nRow { display: flex; justify-content: space-between; align-items: center; width: min(460px, 86vw); margin: 6px 0; font-family: inherit; font-size: 26px; padding: 6px 14px; background: rgba(20, 40, 26, .85); color: var(--ink); border: 1px solid var(--line); cursor: pointer; }
+.nRow:hover { background: rgba(50, 100, 60, .9); }
+.nRow b, .nightStars { color: var(--amber); font-weight: normal; letter-spacing: 2px; }
+.nRow i, .nightStars span { color: rgba(255,255,255,.18); font-style: normal; }
+#fileList { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; text-align: left; }
+.file { border: 1px solid var(--line); padding: 10px 14px; background: rgba(0,0,0,.35); font-size: 19px; }
+.file h4 { margin: 0 0 6px !important; }
+.file h4 small { color: var(--dim); font-size: 16px; }
+.file.locked { opacity: .4; }
+.file .likes { color: var(--amber); }
+.fstat { color: var(--dim); }
+.fstat b { color: var(--ink); font-weight: normal; }
+.chBtn { font-size: 16px !important; }

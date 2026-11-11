@@ -141,6 +141,7 @@ export const sfx = {
     if (kind === 'dog') { for (let i = 0; i < 3; i++) tone(70 + i * 9, 1.1, { type: 'sawtooth', gain: 0.12, pan, lp: 380, delay: i * 0.03, attack: 0.1 }); }
     else if (kind === 'cat') noise(1.0, { type: 'highpass', freq: 3200, gain: 0.25, pan, attack: 0.1 });
     else if (kind === 'rabbit') tone(900, 0.7, { type: 'sawtooth', gain: 0.1, pan, slideTo: 1500, lp: 2500 });
+    else if (kind === 'ferret') sfx.chitter(pan, 1);
     else if (kind === 'parrot') { tone(1300, 0.18, { type: 'square', gain: 0.07, pan, slideTo: 1900 }); tone(1500, 0.2, { type: 'square', gain: 0.07, pan, slideTo: 900, delay: 0.25 }); }
   },
   screech() {
@@ -166,5 +167,9 @@ export const sfx = {
   chime() {
     [523, 659, 784, 1047, 784, 1047].forEach((f, i) => { tone(f, 1.6, { gain: 0.12, delay: i * 0.45 }); tone(f * 2.01, 1.2, { gain: 0.03, delay: i * 0.45 }); });
   },
+  // a ferret's chitter: quick bright clicks; panned hard so you can tell the side
+  chitter(pan = 0, v = 0.8) { for (let i = 0; i < 7; i++) { tone(1900 + Math.random() * 700, 0.035, { type: 'square', gain: 0.06 * v, pan, lp: 4200, delay: i * 0.065 }); noise(0.03, { type: 'highpass', freq: 5000, gain: 0.1 * v, pan, delay: i * 0.065 }); } },
+  scurry(pan = 0, v = 0.3) { for (let i = 0; i < 6; i++) noise(0.04, { type: 'bandpass', freq: 1800 + Math.random() * 900, gain: v, pan, delay: i * 0.07 + Math.random() * 0.03 }); },
+  surge() { tone(60, 1.2, { type: 'sawtooth', gain: 0.25, lp: 500, slideTo: 140 }); noise(0.4, { type: 'highpass', freq: 2500, gain: 0.35 }); tone(3200, 0.3, { type: 'square', gain: 0.05, delay: 0.2 }); },
   whisper() { noise(1.4, { type: 'bandpass', freq: 2200, q: 3, gain: 0.12, attack: 0.3, pan: (Math.random() - 0.5) * 2 }); },
 };
