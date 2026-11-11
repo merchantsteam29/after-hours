@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.2",
+    "date": "2026-11-10",
+    "title": "Controllers and phones",
+    "notes": [
+      "Play with a controller: the left stick looks around, the bumpers shut the doors, the triggers work the lights, and A raises the cameras. Menus work with the D-pad.",
+      "Play on a phone: drag to look around, tap the buttons along the bottom for the doors, lights and vent, and tap the phone box to answer calls.",
+      "More settings: screen shake and flashes (full, reduced or off), auto resolution, fullscreen and controllers. Settings can now be opened from the pause menu."
+    ]
+  },
+  {
     "version": "1.1",
     "date": "2026-11-09",
     "title": "Install as an app",
