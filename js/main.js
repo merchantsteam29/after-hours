@@ -1090,7 +1090,16 @@ addEventListener('keyup', (e) => { keys[e.code] = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play' && !paused) pause(true); });
 // progress sync between devices (sync.js): the save's progress, never its settings
 if (window.GameSync) {
-  GameSync.init({ game: 'afterhours', keys: [{ match: SAVE_KEY, mode: 'max', skip: ['volume', 'shake', 'autoRes', 'pads'] }], idle: () => mode === 'menu' });
+  const sv = (g) => g(SAVE_KEY) || {};
+  GameSync.init({ game: 'afterhours', ach: [
+    { id: 'n1', name: 'First shift', desc: 'Survive night 1', test: (g) => (sv(g).night || 1) >= 2 || !!sv(g).beat },
+    { id: 'beat', name: 'Paycheck', desc: 'Finish night 5', test: (g) => !!sv(g).beat },
+    { id: 'ot', name: 'Overtime', desc: 'Survive Night 6 · Overtime', test: (g) => !!sv(g).overtime },
+    { id: 'three', name: 'Model employee', desc: 'Three stars on any night', test: (g) => Object.values(sv(g).nightStars || {}).some((v) => v >= 3) },
+    { id: 'challenge', name: 'Challenger', desc: 'Beat a Custom Night challenge', test: (g) => Object.keys(sv(g).challenges || {}).length > 0 },
+    { id: 'all20', name: 'Absolute legend', desc: 'Beat Custom Night with everyone on 20', test: (g) => (sv(g).stars || 0) >= 3 },
+    { id: 'doses', name: 'Steady hands', desc: 'Give 20 correct doses', test: (g) => Object.values(sv(g).files || {}).reduce((n, f) => n + (f.doses || 0), 0) >= 20 }
+  ], keys: [{ match: SAVE_KEY, mode: 'max', skip: ['volume', 'shake', 'autoRes', 'pads'] }], idle: () => mode === 'menu' });
   $('syncBtn').addEventListener('click', (e) => { e.stopPropagation(); GameSync.open(); });
 } else $('syncBtn').classList.add('hidden');
 
